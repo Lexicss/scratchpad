@@ -1,0 +1,5 @@
+%h1 Form Example
+
+=form_tag example_query_path, :method => :post do
+  =select_tag :selectorator, options_for_select([['Ungood Option', 'ugo'], ['Bad Option', 'bo']])
+  =submit_tag 'Query'
