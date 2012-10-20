@@ -1,0 +1,11 @@
+<resources>
+
+    <!-- application -->
+    <string name="app_name">Dual Release Library</string>
+    <string name="menu_settings">Settings</string>
+
+    <!-- splash activity -->
+    <string name="activity_title_splash">@string/app_name</string>
+    <string name="version">Library</string>
+
+</resources>
