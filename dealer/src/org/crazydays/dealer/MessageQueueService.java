@@ -15,9 +15,6 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
-/**
- * TODO: implement local storage backing of the queue
- */
 public class MessageQueueService
     extends Service
 {
@@ -53,7 +50,7 @@ public class MessageQueueService
     @Override
     public void onCreate()
     {
-        Log.i("MessageQueueService", "onCreate");
+        Log.i(getClass().getSimpleName(), "onCreate");
         super.onCreate();
         loadMessageQueue();
     }
@@ -61,7 +58,7 @@ public class MessageQueueService
     @Override
     public void onDestroy()
     {
-        Log.i("MessageQueueService", "onDestroy");
+        Log.i(getClass().getSimpleName(), "onDestroy");
         storeMessageQueue();
         super.onDestroy();
     }
@@ -84,6 +81,10 @@ public class MessageQueueService
                 Log.e(getClass().getSimpleName(), e.getMessage());
             }
         }
+
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString(MESSAGES_PROPERTY, "");
+        editor.commit();
     }
 
     private void storeMessageQueue()
@@ -135,7 +136,7 @@ public class MessageQueueService
 
     private void notifyEventListeners()
     {
-        for (EventListener listener : this.listeners) {
+        for (EventListener listener : listeners) {
             listener.received();
         }
     }

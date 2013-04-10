@@ -8,6 +8,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -25,23 +26,22 @@ public class GCMIntentService
         @Override
         public void onServiceConnected(ComponentName className, IBinder binder)
         {
-            Log.i("GCMIntentService", "onServiceConnected");
+            Log.i(GCMIntentService.class.getSimpleName(), "onServiceConnected");
             messageQueueService =
                 ((MessageQueueServiceBinder) binder).getService();
-
-            // TODO: implement enqueue local store
-
             bound = true;
         }
 
         @Override
         public void onServiceDisconnected(ComponentName arg0)
         {
-            Log.i("GCMIntentService", "onServiceDisconnected");
+            Log.i(GCMIntentService.class.getSimpleName(),
+                "onServiceDisconnected");
             bound = false;
         }
     };
 
+    private Handler handler = new Handler();
     private MessageQueueService messageQueueService;
     private boolean bound;
 
@@ -64,44 +64,94 @@ public class GCMIntentService
     public GCMIntentService()
     {
         super();
-        Log.d(GCMIntentService.class.getSimpleName(), "constructor");
+        Log.d(getClass().getSimpleName(), "constructor");
     }
 
     public GCMIntentService(String... senderIds)
     {
         super(senderIds);
-        Log.d(GCMIntentService.class.getSimpleName(), "constructor: "
-            + senderIds.toString());
+        Log.d(getClass().getSimpleName(),
+            "constructor: " + senderIds.toString());
+    }
+
+    @Override
+    public void onCreate()
+    {
+        Log.i(getClass().getSimpleName(), "onCreate");
+        super.onCreate();
+
+        bindMessageQueueService();
+    }
+
+    private void bindMessageQueueService()
+    {
+        bindService(new Intent(this, MessageQueueService.class),
+            serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    @Override
+    public void onDestroy()
+    {
+        Log.i(getClass().getSimpleName(), "onDestroy");
+        super.onDestroy();
+        unbindMessageQueueService();
+    }
+
+    private void unbindMessageQueueService()
+    {
+        unbindService(serviceConnection);
     }
 
     @Override
     protected void onRegistered(Context context, String content)
     {
-        Log.d(GCMIntentService.class.getSimpleName(), "onRegistered: "
-            + content);
+        Log.d(getClass().getSimpleName(), "onRegistered: " + content);
     }
 
     @Override
     protected void onUnregistered(Context context, String content)
     {
-        Log.d(GCMIntentService.class.getSimpleName(), "onUnregistered: "
-            + content);
+        Log.d(getClass().getSimpleName(), "onUnregistered: " + content);
     }
 
     @Override
-    protected void onMessage(Context context, Intent intent)
+    protected void onError(Context context, String content)
     {
-        Log.d(GCMIntentService.class.getSimpleName(), "onMessage");
+        Log.d(getClass().getSimpleName(), "onError: " + content);
+    }
 
+    @Override
+    protected boolean onRecoverableError(Context context, String content)
+    {
+        Log.d(getClass().getSimpleName(), "onRecoverableError: " + content);
+        return super.onRecoverableError(context, content);
+    }
+
+    @Override
+    protected void onMessage(final Context context, final Intent intent)
+    {
+        Log.d(getClass().getSimpleName(), "onMessage");
+
+        if (bound) {
+            receivedMessage(intent);
+        } else {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run()
+                {
+                    onMessage(context, intent);
+                }
+            }, 200);
+        }
+    }
+
+    private void receivedMessage(Intent intent)
+    {
         String content = intent.getStringExtra(CONTENT);
         Log.i(getClass().getSimpleName(), "content: " + content);
 
-        if (bound) {
-            JSONObject json = parse(content);
-            messageQueueService.enqueue(json);
-        } else {
-            // TODO: implement local queueing
-        }
+        JSONObject json = parse(content);
+        messageQueueService.enqueue(json);
     }
 
     private JSONObject parse(String content)
@@ -112,47 +162,5 @@ public class GCMIntentService
             Log.e(getClass().getSimpleName(), e.getMessage());
             return null;
         }
-    }
-
-    @Override
-    protected void onError(Context context, String content)
-    {
-        Log.d(GCMIntentService.class.getSimpleName(), "onError: " + content);
-    }
-
-    @Override
-    protected boolean onRecoverableError(Context context, String content)
-    {
-        Log.d(GCMIntentService.class.getSimpleName(), "onRecoverableError: "
-            + content);
-        return super.onRecoverableError(context, content);
-    }
-
-    @Override
-    public void onCreate()
-    {
-        Log.i("GCMIntentService", "onCreate");
-        super.onCreate();
-
-        bindMessageQueueService();
-    }
-
-    @Override
-    public void onDestroy()
-    {
-        Log.i("GCMIntentService", "onDestroy");
-        super.onDestroy();
-        unbindMessageQueueService();
-    }
-
-    private void bindMessageQueueService()
-    {
-        bindService(new Intent(this, MessageQueueService.class),
-            serviceConnection, Context.BIND_AUTO_CREATE);
-    }
-
-    private void unbindMessageQueueService()
-    {
-        unbindService(serviceConnection);
     }
 }
